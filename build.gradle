@@ -1,0 +1,77 @@
+buildscript {
+    ext {
+        kotlin_group = "org.jetbrains.kotlin"
+        kotlin_version = "1.3.61"
+
+        junit_group = "org.junit.jupiter"
+        junit_version = "5.3.1"
+
+        jackson_core_group = "com.fasterxml.jackson.core"
+        jackson_core_version = "2.9.8"
+
+        jackson_datatype_group = "com.fasterxml.jackson.datatype"
+        jackson_datatype_version = "2.9.8"
+
+        onixlabs_group = "io.onixlabs"
+        onixlabs_version = "1.0.0-rc1"
+    }
+
+    repositories {
+        mavenLocal()
+    }
+}
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.3.61'
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+
+    apply plugin: 'kotlin'
+    apply plugin: 'maven-publish'
+}
+
+group 'io.onixlabs'
+version '1.0.0-rc1'
+
+dependencies {
+    implementation "$kotlin_group:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "$kotlin_group:kotlin-reflect:$kotlin_version"
+    implementation "$onixlabs_group:onixlabs-kotlin-core:$onixlabs_version"
+
+    testRuntimeOnly "$junit_group:junit-jupiter-engine:$junit_version"
+    testImplementation "$junit_group:junit-jupiter-api:$junit_version"
+    testImplementation "$jackson_core_group:jackson-databind:$jackson_core_version"
+    testImplementation "$jackson_datatype_group:jackson-datatype-jsr310:$jackson_datatype_version"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.group
+            version = project.version
+            artifactId = 'onixlabs-kotlin-scheduler'
+            from components.java
+        }
+    }
+}
+
+test { useJUnitPlatform() }
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+    kotlinOptions {
+        languageVersion = "1.2"
+        apiVersion = "1.2"
+        jvmTarget = "1.8"
+        javaParameters = true
+    }
+}
+
+task releaseLocal(type: GradleBuild) {
+    tasks = ['clean', 'build', 'publishToMavenLocal']
+}
