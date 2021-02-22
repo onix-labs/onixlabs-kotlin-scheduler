@@ -1,10 +1,10 @@
 buildscript {
     ext {
-        kotlin_group = "org.jetbrains.kotlin"
-        kotlin_version = "1.3.61"
+        kotlin_group = 'org.jetbrains.kotlin'
+        kotlin_version = '1.3.72'
 
-        junit_group = "org.junit.jupiter"
-        junit_version = "5.3.1"
+        junit_group = 'org.junit.jupiter'
+        junit_version = '5.3.1'
 
         jackson_core_group = "com.fasterxml.jackson.core"
         jackson_core_version = "2.9.8"
@@ -13,46 +13,84 @@ buildscript {
         jackson_datatype_version = "2.9.8"
 
         onixlabs_group = "io.onixlabs"
-        onixlabs_version = "1.0.0-rc1"
+        onixlabs_kotlin_core_version = "1.0.0-rc1"
     }
 
-    repositories {
-        mavenLocal()
-    }
-}
-
-plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.3.61'
-}
-
-allprojects {
     repositories {
         mavenLocal()
         mavenCentral()
         jcenter()
     }
 
-    apply plugin: 'kotlin'
-    apply plugin: 'maven-publish'
+    dependencies {
+        classpath "$kotlin_group:kotlin-gradle-plugin:$kotlin_version"
+    }
 }
 
 group 'io.onixlabs'
 version '1.0.0-rc1'
 
-dependencies {
-    implementation "$kotlin_group:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "$kotlin_group:kotlin-reflect:$kotlin_version"
-    implementation "$onixlabs_group:onixlabs-kotlin-core:$onixlabs_version"
+allprojects {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        maven { url "https://jitpack.io" }
+    }
 
-    testRuntimeOnly "$junit_group:junit-jupiter-engine:$junit_version"
-    testImplementation "$junit_group:junit-jupiter-api:$junit_version"
-    testImplementation "$jackson_core_group:jackson-databind:$jackson_core_version"
-    testImplementation "$jackson_datatype_group:jackson-datatype-jsr310:$jackson_datatype_version"
+    configurations {
+        all {
+            exclude module: 'slf4j-log4j12'
+            exclude module: 'log4j-slf4j-impl'
+        }
+    }
+
+    apply plugin: 'kotlin'
+    apply plugin: 'maven-publish'
+
+    dependencies {
+        implementation "$kotlin_group:kotlin-stdlib-jdk8:$kotlin_version"
+        implementation "$kotlin_group:kotlin-reflect:$kotlin_version"
+        implementation "$onixlabs_group:onixlabs-kotlin-core:$onixlabs_kotlin_core_version"
+
+        testRuntimeOnly "$junit_group:junit-jupiter-engine:$junit_version"
+        testImplementation "$junit_group:junit-jupiter-api:$junit_version"
+        testImplementation "$jackson_core_group:jackson-databind:$jackson_core_version"
+        testImplementation "$jackson_datatype_group:jackson-datatype-jsr310:$jackson_datatype_version"
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        kotlinOptions {
+            languageVersion = "1.2"
+            apiVersion = "1.2"
+            jvmTarget = "1.8"
+            javaParameters = true
+        }
+    }
+
+    jar {
+        exclude '**/log4j2*.xml'
+    }
+
+    test {
+        maxHeapSize = "4096m"
+        useJUnitPlatform()
+    }
 }
 
 publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/onix-labs/onixlabs-kotlin-scheduler")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
     publications {
-        maven(MavenPublication) {
+        gpr(MavenPublication) {
             groupId = project.group
             version = project.version
             artifactId = 'onixlabs-kotlin-scheduler'
@@ -61,17 +99,17 @@ publishing {
     }
 }
 
-test { useJUnitPlatform() }
-
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
-    kotlinOptions {
-        languageVersion = "1.2"
-        apiVersion = "1.2"
-        jvmTarget = "1.8"
-        javaParameters = true
-    }
+task cleanLocal(type: Exec) {
+    def shellExec = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'cmd' : 'sh'
+    commandLine shellExec, './clean-cache.sh'
 }
 
 task releaseLocal(type: GradleBuild) {
+    startParameter = gradle.startParameter.newInstance()
     tasks = ['clean', 'build', 'publishToMavenLocal']
+}
+
+task releasePublic(type: GradleBuild) {
+    startParameter = gradle.startParameter.newInstance()
+    tasks = ['clean', 'build', 'publishToMavenLocal', 'publish']
 }
